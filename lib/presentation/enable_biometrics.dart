@@ -4,11 +4,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
 class BiometricsPage extends StatefulWidget {
+  const BiometricsPage({super.key});
+
   @override
-  _BiometricsPageState createState() => _BiometricsPageState();
+  BiometricsPageState createState() => BiometricsPageState();
 }
 
-class _BiometricsPageState extends State<BiometricsPage> {
+class BiometricsPageState extends State<BiometricsPage> {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
 

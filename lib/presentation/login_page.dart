@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:biometric/presentation/enable_biometrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -26,10 +28,10 @@ class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  _LoginPageState createState() => _LoginPageState();
+  LoginPageState createState() => LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
@@ -61,7 +63,7 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
     } catch (e) {
-      print('Authentication error: $e');
+      log('Authentication error: $e');
     }
     return false;
   }
@@ -83,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => BiometricsPage(),
+            builder: (context) => const BiometricsPage(),
           ),
         );
       }
