@@ -34,11 +34,12 @@ class LoginPageState extends State<LoginPage> {
   final LocalAuthentication _localAuth = LocalAuthentication();
 
   final Map<String, String> _validCredentials = {
-    'user1@example.com': 'password1',
-    'user2@example.com': 'password2',
-    'user3@example.com': 'password3',
+    'user1@example.com': 'Password1',
+    'user2@example.com': 'Password2',
+    'user3@example.com': 'Password3',
   };
 
+  final _formKey = GlobalKey<FormState>();
   String _errorMessage = '';
 
   Future<bool> _authenticate() async {
@@ -60,25 +61,27 @@ class LoginPageState extends State<LoginPage> {
   }
 
   void _login() async {
-    final enteredEmail = _emailController.text.trim();
-    final enteredPassword = _passwordController.text.trim();
+    if (_formKey.currentState!.validate()) {
+      final enteredEmail = _emailController.text.trim();
+      final enteredPassword = _passwordController.text.trim();
 
-    if (_validCredentials.containsKey(enteredEmail) &&
-        _validCredentials[enteredEmail] == enteredPassword) {
-      final canUseBiometrics =
-          await _secureStorage.read(key: 'biometricsEnabled');
-      bool authenticated = true;
-      if (canUseBiometrics == 'true') {
-        authenticated = await _authenticate();
-      }
+      if (_validCredentials.containsKey(enteredEmail) &&
+          _validCredentials[enteredEmail] == enteredPassword) {
+        final canUseBiometrics =
+            await _secureStorage.read(key: 'biometricsEnabled');
+        bool authenticated = true;
+        if (canUseBiometrics == 'true') {
+          authenticated = await _authenticate();
+        }
 
-      if (authenticated) {
-        _navigateToBiometricsPage();
+        if (authenticated) {
+          _navigateToBiometricsPage();
+        }
+      } else {
+        setState(() {
+          _errorMessage = 'Wrong credentials. Please try again.';
+        });
       }
-    } else {
-      setState(() {
-        _errorMessage = 'Wrong credentials. Please try again.';
-      });
     }
   }
 
@@ -125,39 +128,68 @@ class LoginPageState extends State<LoginPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-              ),
-            ),
-            const SizedBox(height: 16.0),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-              ),
-              obscureText: true,
-            ),
-            const SizedBox(height: 16.0),
-            ElevatedButton(
-              onPressed: _login,
-              child: const Text('Login'),
-            ),
-            const SizedBox(height: 16.0),
-            if (_errorMessage.isNotEmpty)
-              Text(
-                _errorMessage,
-                style: const TextStyle(
-                  color: Colors.red,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
                 ),
+                validator: (value) {
+                  return emailValidator(value);
+                },
               ),
-          ],
+              const SizedBox(height: 16.0),
+              TextFormField(
+                controller: _passwordController,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                ),
+                obscureText: true,
+                validator: (value) {
+                  return passwordValidator(value);
+                },
+              ),
+              const SizedBox(height: 16.0),
+              ElevatedButton(
+                onPressed: _login,
+                child: const Text('Login'),
+              ),
+              const SizedBox(height: 16.0),
+              if (_errorMessage.isNotEmpty)
+                Text(
+                  _errorMessage,
+                  style: const TextStyle(
+                    color: Colors.red,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  String? emailValidator(String? value) {
+    if (value!.isEmpty) {
+      return 'Email is required';
+    } else if (!_validCredentials.containsKey(value)) {
+      return 'Invalid email';
+    }
+    return null;
+  }
+
+  String? passwordValidator(String? value) {
+    if (value!.isEmpty) {
+      return 'Password is required';
+    } else if (value.length < 8) {
+      return 'Password must be at least 8 characters';
+    } else if (!value.contains(RegExp(r'[A-Z]'))) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    return null;
   }
 }
