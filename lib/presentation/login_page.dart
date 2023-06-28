@@ -6,7 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
 class Login extends StatelessWidget {
-  const Login({super.key});
+  const Login({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class Login extends StatelessWidget {
 }
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({Key? key}) : super(key: key);
 
   @override
   LoginPageState createState() => LoginPageState();
@@ -32,28 +32,21 @@ class LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
-  bool _biometricsEnabled = false;
 
-  final List<String> _validEmails = [
-    'user1@example.com',
-    'user2@example.com',
-    'user3@example.com',
-  ];
-  final List<String> _validPasswords = [
-    'password1',
-    'password2',
-    'password3',
-  ];
+  final Map<String, String> _validCredentials = {
+    'user1@example.com': 'password1',
+    'user2@example.com': 'password2',
+    'user3@example.com': 'password3',
+  };
 
   String _errorMessage = '';
 
   Future<bool> _authenticate() async {
     try {
-      bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      final canCheckBiometrics = await _localAuth.canCheckBiometrics;
 
       if (canCheckBiometrics) {
-        List<BiometricType> availableBiometrics =
-            await _localAuth.getAvailableBiometrics();
+        final availableBiometrics = await _localAuth.getAvailableBiometrics();
         if (availableBiometrics.isNotEmpty) {
           return await _localAuth.authenticate(
             localizedReason: 'Authenticate to access the app',
@@ -70,35 +63,23 @@ class LoginPageState extends State<LoginPage> {
     final enteredEmail = _emailController.text.trim();
     final enteredPassword = _passwordController.text.trim();
 
-    if (_validEmails.contains(enteredEmail) &&
-        _validPasswords.contains(enteredPassword)) {
-      String? canUseBiometrics =
+    if (_validCredentials.containsKey(enteredEmail) &&
+        _validCredentials[enteredEmail] == enteredPassword) {
+      final canUseBiometrics =
           await _secureStorage.read(key: 'biometricsEnabled');
       bool authenticated = true;
       if (canUseBiometrics == 'true') {
         authenticated = await _authenticate();
       }
 
-      if (context.mounted && authenticated) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const BiometricsPage(),
-          ),
-        );
+      if (authenticated) {
+        _navigateToBiometricsPage();
       }
     } else {
       setState(() {
         _errorMessage = 'Wrong credentials. Please try again.';
       });
     }
-  }
-
-  void getBiometricStatus() async {
-    String? enabled = await _secureStorage.read(key: 'biometricsEnabled');
-    setState(() {
-      _biometricsEnabled = enabled == 'true';
-    });
   }
 
   @override
@@ -108,8 +89,8 @@ class LoginPageState extends State<LoginPage> {
   }
 
   void _initializeAuthentication() async {
-    bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
-    String? canUseBiometrics =
+    final canCheckBiometrics = await _localAuth.canCheckBiometrics;
+    final canUseBiometrics =
         await _secureStorage.read(key: 'biometricsEnabled');
 
     if (canCheckBiometrics && canUseBiometrics == 'true') {
@@ -125,8 +106,8 @@ class LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _navigateToBiometricsPage() {
-    Future.microtask(() {
+  Future<void> _navigateToBiometricsPage() async {
+    await Future.microtask(() {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
