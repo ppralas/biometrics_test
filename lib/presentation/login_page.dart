@@ -5,10 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
-void main() {
-  runApp(const Login());
-}
-
 class Login extends StatelessWidget {
   const Login({super.key});
 
@@ -36,6 +32,8 @@ class LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
+  bool _biometricsEnabled = false;
+
   final List<String> _validEmails = [
     'user1@example.com',
     'user2@example.com',
@@ -94,6 +92,48 @@ class LoginPageState extends State<LoginPage> {
         _errorMessage = 'Wrong credentials. Please try again.';
       });
     }
+  }
+
+  void getBiometricStatus() async {
+    String? enabled = await _secureStorage.read(key: 'biometricsEnabled');
+    setState(() {
+      _biometricsEnabled = enabled == 'true';
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAuthentication();
+  }
+
+  void _initializeAuthentication() async {
+    bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
+    String? canUseBiometrics =
+        await _secureStorage.read(key: 'biometricsEnabled');
+
+    if (canCheckBiometrics && canUseBiometrics == 'true') {
+      _authenticateAndNavigate();
+    }
+  }
+
+  Future<void> _authenticateAndNavigate() async {
+    bool authenticated = await _authenticate();
+
+    if (authenticated) {
+      _navigateToBiometricsPage();
+    }
+  }
+
+  void _navigateToBiometricsPage() {
+    Future.microtask(() {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const BiometricsPage(),
+        ),
+      );
+    });
   }
 
   @override
