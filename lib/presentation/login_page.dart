@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
-class Login extends StatelessWidget {
-  const Login({Key? key}) : super(key: key);
+class BiometricsApp extends StatelessWidget {
+  const BiometricsApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -44,16 +44,15 @@ class LoginPageState extends State<LoginPage> {
 
   Future<bool> _authenticate() async {
     try {
+      //stavit await localAuth itd u if
       final canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      if (!canCheckBiometrics) return false;
 
-      if (canCheckBiometrics) {
-        final availableBiometrics = await _localAuth.getAvailableBiometrics();
-        if (availableBiometrics.isNotEmpty) {
-          return await _localAuth.authenticate(
-            localizedReason: 'Authenticate to access the app',
-          );
-        }
-      }
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      if (availableBiometrics.isEmpty) return false;
+      return _localAuth.authenticate(
+        localizedReason: 'Authenticate to access the app',
+      );
     } catch (e) {
       log('Authentication error: $e');
     }
@@ -61,27 +60,19 @@ class LoginPageState extends State<LoginPage> {
   }
 
   void _login() async {
-    if (_formKey.currentState!.validate()) {
-      final enteredEmail = _emailController.text.trim();
-      final enteredPassword = _passwordController.text.trim();
+    _formKey.currentState!.save();
+    if (!_formKey.currentState!.validate()) {
+      setState(() {
+        _errorMessage = 'Wrong credentials. Please try again.';
+      });
+      return;
+    }
+    final enteredEmail = _emailController.text.trim();
+    final enteredPassword = _passwordController.text.trim();
 
-      if (_validCredentials.containsKey(enteredEmail) &&
-          _validCredentials[enteredEmail] == enteredPassword) {
-        final canUseBiometrics =
-            await _secureStorage.read(key: 'biometricsEnabled');
-        bool authenticated = true;
-        if (canUseBiometrics == 'true') {
-          authenticated = await _authenticate();
-        }
-
-        if (authenticated) {
-          _navigateToBiometricsPage();
-        }
-      } else {
-        setState(() {
-          _errorMessage = 'Wrong credentials. Please try again.';
-        });
-      }
+    if (_validCredentials.containsKey(enteredEmail) &&
+        _validCredentials[enteredEmail] == enteredPassword) {
+      navigateToBiometricPage();
     }
   }
 
@@ -92,11 +83,10 @@ class LoginPageState extends State<LoginPage> {
   }
 
   void _initializeAuthentication() async {
-    final canCheckBiometrics = await _localAuth.canCheckBiometrics;
     final canUseBiometrics =
         await _secureStorage.read(key: 'biometricsEnabled');
 
-    if (canCheckBiometrics && canUseBiometrics == 'true') {
+    if (canUseBiometrics == 'true') {
       _authenticateAndNavigate();
     }
   }
@@ -104,20 +94,18 @@ class LoginPageState extends State<LoginPage> {
   Future<void> _authenticateAndNavigate() async {
     bool authenticated = await _authenticate();
 
-    if (authenticated) {
-      _navigateToBiometricsPage();
+    if (authenticated && mounted) {
+      navigateToBiometricPage();
     }
   }
 
-  Future<void> _navigateToBiometricsPage() async {
-    await Future.microtask(() {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const BiometricsPage(),
-        ),
-      );
-    });
+  void navigateToBiometricPage() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BiometricsPage(),
+      ),
+    );
   }
 
   @override
@@ -135,6 +123,7 @@ class LoginPageState extends State<LoginPage> {
             children: <Widget>[
               TextFormField(
                 controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
                   labelText: 'Email',
                 ),
@@ -166,6 +155,10 @@ class LoginPageState extends State<LoginPage> {
                     color: Colors.red,
                   ),
                 ),
+              ElevatedButton(
+                onPressed: _initializeAuthentication,
+                child: const Text('Use Biometrics'),
+              )
             ],
           ),
         ),
@@ -174,20 +167,21 @@ class LoginPageState extends State<LoginPage> {
   }
 
   String? emailValidator(String? value) {
-    if (value!.isEmpty) {
+    final emailRegex = RegExp(
+      (r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+"),
+    );
+    if (value == null || value.isEmpty) {
       return 'Email is required';
-    } else if (!_validCredentials.containsKey(value)) {
+    } else if (!emailRegex.hasMatch(value)) {
       return 'Invalid email';
     }
     return null;
   }
 
   String? passwordValidator(String? value) {
-    if (value!.isEmpty) {
-      return 'Password is required';
-    } else if (value.length < 8) {
-      return 'Password must be at least 8 characters';
-    } else if (!value.contains(RegExp(r'[A-Z]'))) {
+    RegExp passwordRegex = RegExp(r'^(?=.*[A-Z])(?=.*\d).{8,}$');
+    if (value == null) return "Password can't be empty";
+    if (!passwordRegex.hasMatch(value)) {
       return 'Password must contain at least one uppercase letter';
     }
     return null;
