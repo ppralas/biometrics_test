@@ -32,6 +32,7 @@ class LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
+  bool _isPasswordVisible = false;
 
   final Map<String, String> _validCredentials = {
     'user1@example.com': 'Password1',
@@ -134,10 +135,22 @@ class LoginPageState extends State<LoginPage> {
               const SizedBox(height: 16.0),
               TextFormField(
                 controller: _passwordController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Password',
+                  suffixIcon: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                  ),
                 ),
-                obscureText: true,
+                obscureText: !_isPasswordVisible,
                 validator: (value) {
                   return passwordValidator(value);
                 },
