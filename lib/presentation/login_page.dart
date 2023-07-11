@@ -176,13 +176,35 @@ class LoginPageState extends State<LoginPage> {
 
       final availableBiometrics = await _localAuth.getAvailableBiometrics();
       if (availableBiometrics.isEmpty) return false;
-      return await _localAuth.authenticate(
+
+      bool authenticated = await _localAuth.authenticate(
         localizedReason: 'Authenticate to access the app',
       );
+
+      if (authenticated) {
+        _loginWithBiometrics();
+        return authenticated;
+      }
     } catch (e) {
       log('Authentication error: $e');
     }
     return false;
+  }
+
+  void _loginWithBiometrics() async {
+    try {
+      final token = await AuthApi().login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+      print('Token: $token');
+      _navigateToBiometricPage();
+    } catch (e) {
+      print('Exception: $e');
+      setState(() {
+        _errorMessage = 'An error occurred during login.';
+      });
+    }
   }
 
   Future<void> _storeEmail(String email) async {
