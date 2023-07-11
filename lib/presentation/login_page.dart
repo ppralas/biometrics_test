@@ -5,6 +5,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
+class AuthApi {
+  static const Map<String, String> _validCredentials = {
+    'user1@example.com': 'Password1',
+    'user2@example.com': 'Password2',
+    'user3@example.com': 'Password3',
+  };
+
+  Future<String> login(String email, String password) async {
+    if (_validCredentials.containsKey(email) &&
+        _validCredentials[email] == password) {
+      return 'testToken';
+    } else {
+      throw Exception('ne moze');
+    }
+  }
+}
+
 class BiometricsApp extends StatelessWidget {
   const BiometricsApp({Key? key}) : super(key: key);
 
@@ -34,79 +51,13 @@ class LoginPageState extends State<LoginPage> {
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _isPasswordVisible = false;
 
-  final Map<String, String> _validCredentials = {
-    'user1@example.com': 'Password1',
-    'user2@example.com': 'Password2',
-    'user3@example.com': 'Password3',
-  };
-
   final _formKey = GlobalKey<FormState>();
   String _errorMessage = '';
-
-  Future<bool> _authenticate() async {
-    try {
-      //stavit await localAuth itd u if
-      final canCheckBiometrics = await _localAuth.canCheckBiometrics;
-      if (!canCheckBiometrics) return false;
-
-      final availableBiometrics = await _localAuth.getAvailableBiometrics();
-      if (availableBiometrics.isEmpty) return false;
-      return _localAuth.authenticate(
-        localizedReason: 'Authenticate to access the app',
-      );
-    } catch (e) {
-      log('Authentication error: $e');
-    }
-    return false;
-  }
-
-  void _login() async {
-    _formKey.currentState!.save();
-    if (!_formKey.currentState!.validate()) {
-      setState(() {
-        _errorMessage = 'Wrong credentials. Please try again.';
-      });
-      return;
-    }
-    final enteredEmail = _emailController.text.trim();
-    final enteredPassword = _passwordController.text.trim();
-
-    if (_validCredentials.containsKey(enteredEmail) &&
-        _validCredentials[enteredEmail] == enteredPassword) {
-      navigateToBiometricPage();
-    }
-  }
 
   @override
   void initState() {
     super.initState();
     _initializeAuthentication();
-  }
-
-  void _initializeAuthentication() async {
-    final canUseBiometrics =
-        await _secureStorage.read(key: 'biometricsEnabled');
-
-    if (canUseBiometrics == 'true') {
-      _authenticateAndNavigate();
-    }
-  }
-
-  Future<void> _authenticateAndNavigate() async {
-    bool authenticated = await _authenticate();
-
-    if (authenticated && mounted) {
-      navigateToBiometricPage();
-    }
-  }
-
-  void navigateToBiometricPage() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const BiometricsPage(),
-      ),
-    );
   }
 
   @override
@@ -157,7 +108,22 @@ class LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 16.0),
               ElevatedButton(
-                onPressed: _login,
+                onPressed: () async {
+                  _validateForm();
+                  try {
+                    final token = await AuthApi().login(
+                      _emailController.text.trim(),
+                      _passwordController.text.trim(),
+                    );
+                    print('Token: $token');
+                    _navigateToBiometricPage();
+                  } catch (e) {
+                    print('Exception: $e');
+                    setState(() {
+                      _errorMessage = 'An error occurred during login.';
+                    });
+                  }
+                },
                 child: const Text('Login'),
               ),
               const SizedBox(height: 16.0),
@@ -168,10 +134,6 @@ class LoginPageState extends State<LoginPage> {
                     color: Colors.red,
                   ),
                 ),
-              ElevatedButton(
-                onPressed: _initializeAuthentication,
-                child: const Text('Use Biometrics'),
-              )
             ],
           ),
         ),
@@ -179,24 +141,105 @@ class LoginPageState extends State<LoginPage> {
     );
   }
 
-  String? emailValidator(String? value) {
-    final emailRegex = RegExp(
-      (r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+"),
+  void _navigateToBiometricPage() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BiometricsPage(),
+      ),
     );
-    if (value == null || value.isEmpty) {
-      return 'Email is required';
-    } else if (!emailRegex.hasMatch(value)) {
-      return 'Invalid email';
-    }
-    return null;
   }
 
-  String? passwordValidator(String? value) {
-    RegExp passwordRegex = RegExp(r'^(?=.*[A-Z])(?=.*\d).{8,}$');
-    if (value == null) return "Password can't be empty";
-    if (!passwordRegex.hasMatch(value)) {
-      return 'Password must contain at least one uppercase letter';
+  Future<void> _initializeAuthentication() async {
+    final canUseBiometrics =
+        await _secureStorage.read(key: 'biometricsEnabled');
+    final storedEmail = await _retrieveEmail();
+
+    if (canUseBiometrics == 'true' && storedEmail != null) {
+      _emailController.text = storedEmail;
+      _authenticateAndNavigate(storedEmail, '');
     }
-    return null;
   }
+
+  Future<void> _authenticateAndNavigate(String email, String password) async {
+    bool authenticated = await _shouldUseLocalAuth();
+
+    if (authenticated && mounted) {
+      _navigateToBiometricPage();
+    }
+  }
+
+  Future<bool> _shouldUseLocalAuth() async {
+    try {
+      final canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      if (!canCheckBiometrics) return false;
+
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      if (availableBiometrics.isEmpty) return false;
+      return await _localAuth.authenticate(
+        localizedReason: 'Authenticate to access the app',
+      );
+    } catch (e) {
+      log('Authentication error: $e');
+    }
+    return false;
+  }
+
+  Future<void> _storeEmail(String email) async {
+    await _secureStorage.write(key: 'email', value: email);
+  }
+
+  Future<String?> _retrieveEmail() async {
+    return await _secureStorage.read(key: 'email');
+  }
+
+  // void _login(String email, String password) async {
+  //   if (_validCredentials.containsKey(email) &&
+  //       _validCredentials[email] == password) {
+  //     await _storeEmailAndPassword(email, password);
+  //     _navigateToBiometricPage();
+  //   } else {
+  //     setState(() {
+  //       _errorMessage = 'Invalid email or password. Please try again.';
+  //     });
+  //   }
+  // }
+
+  void _validateForm() {
+    _formKey.currentState!.save();
+    if (!_formKey.currentState!.validate()) {
+      setState(() {
+        _errorMessage = 'Wrong credentials. Please try again';
+      });
+      return;
+    }
+  }
+
+  Future<void> _storeEmailAndPassword(String email, String password) async {
+    await _secureStorage.write(key: 'email', value: email);
+    await _secureStorage.write(key: 'password', value: password);
+  }
+  //napraviti login funkicu koja provjerava da li je email valid, password valid, postoji li user s navedenim emailom
+  // i passwordom, ako je to sve ok spremiti u secure storage email i password
+}
+
+String? emailValidator(String? value) {
+  final emailRegex = RegExp(
+    (r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+"),
+  );
+  if (value == null || value.isEmpty) {
+    return 'Email is required';
+  } else if (!emailRegex.hasMatch(value)) {
+    return 'Invalid email';
+  }
+  return null;
+}
+
+String? passwordValidator(String? value) {
+  RegExp passwordRegex = RegExp(r'^(?=.*[A-Z])(?=.*\d).{8,}$');
+  if (value == null) return "Password can't be empty";
+  if (!passwordRegex.hasMatch(value)) {
+    return 'Password must contain at least one uppercase letter';
+  }
+  return null;
 }

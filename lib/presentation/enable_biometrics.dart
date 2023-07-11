@@ -1,5 +1,6 @@
 import 'package:biometric/presentation/login_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -16,42 +17,12 @@ class BiometricsPageState extends State<BiometricsPage> {
 
   bool _biometricsEnabled = false;
 
-  Future<void> _toggleBiometrics(bool value) async {
-    if (value) {
-      bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
-      if (canCheckBiometrics) {
-        setState(() {
-          _biometricsEnabled = true;
-        });
-      } else {
-        setState(() {
-          _biometricsEnabled = false;
-        });
-        // Show error or display a message that the device does not support biometrics.
-      }
-    } else {
-      setState(() {
-        _biometricsEnabled = false;
-      });
-    }
-  }
-
   @override
   void initState() {
     super.initState();
+    _checkBiometricSupport();
     _loadBiometricsStatus();
-  }
-
-  Future<void> _loadBiometricsStatus() async {
-    String? enabled = await _secureStorage.read(key: 'biometricsEnabled');
-    setState(() {
-      _biometricsEnabled = enabled == 'true';
-    });
-  }
-
-  Future<void> _saveBiometricsStatus(bool value) async {
-    await _secureStorage.write(
-        key: 'biometricsEnabled', value: value.toString());
+    _checkBiometricPermission();
   }
 
   @override
@@ -90,5 +61,71 @@ class BiometricsPageState extends State<BiometricsPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _toggleBiometrics(bool value) async {
+    if (value) {
+      bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      if (canCheckBiometrics) {
+        setState(
+          () {
+            _biometricsEnabled = true;
+          },
+        );
+      } else {
+        setState(
+          () {
+            _biometricsEnabled = false;
+          },
+        );
+      }
+    } else {
+      setState(
+        () {
+          _biometricsEnabled = false;
+        },
+      );
+    }
+  }
+
+  Future<void> _checkBiometricSupport() async {
+    bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
+    if (!canCheckBiometrics) {
+      setState(
+        () {
+          _biometricsEnabled = false;
+        },
+      );
+    }
+  }
+
+  Future<void> _loadBiometricsStatus() async {
+    String? enabled = await _secureStorage.read(key: 'biometricsEnabled');
+    setState(() {
+      _biometricsEnabled = enabled == 'true';
+    });
+  }
+
+  Future<void> _checkBiometricPermission() async {
+    try {
+      bool isBiometricEnabled = await _localAuth.isDeviceSupported();
+      if (!isBiometricEnabled) {
+        // Biometrics is not enabled in the system
+        setState(() {
+          _biometricsEnabled = false;
+        });
+      }
+    } on PlatformException catch (error) {
+      // An error occurred while checking biometric permission
+      setState(() {
+        _biometricsEnabled = false;
+      });
+      print('Error checking biometric permission: ${error.message}');
+    }
+  }
+
+  Future<void> _saveBiometricsStatus(bool value) async {
+    await _secureStorage.write(
+        key: 'biometricsEnabled', value: value.toString());
   }
 }
