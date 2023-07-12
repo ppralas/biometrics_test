@@ -2,7 +2,6 @@ import 'dart:developer';
 
 import 'package:biometric/presentation/enable_biometrics.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -18,7 +17,7 @@ class AuthApi {
         _validCredentials[email] == password) {
       return 'testToken';
     } else {
-      throw Exception('ne moze');
+      throw Exception('Invalid email or password.');
     }
   }
 }
@@ -80,7 +79,9 @@ class LoginPageState extends State<LoginPage> {
                 decoration: const InputDecoration(
                   labelText: 'Email',
                 ),
-                validator: (value) => emailValidator(value),
+                validator: (value) {
+                  return emailValidator(value);
+                },
               ),
               const SizedBox(height: 16.0),
               TextFormField(
@@ -101,7 +102,9 @@ class LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 obscureText: !_isPasswordVisible,
-                validator: (value) => passwordValidator(value),
+                validator: (value) {
+                  return passwordValidator(value);
+                },
               ),
               const SizedBox(height: 16.0),
               ElevatedButton(
@@ -113,11 +116,13 @@ class LoginPageState extends State<LoginPage> {
                       _passwordController.text.trim(),
                     );
                     print('Token: $token');
+                    await _storeEmail(_emailController.text.trim());
+                    await _storePassword(_passwordController.text.trim());
                     _navigateToBiometricPage();
                   } catch (e) {
                     print('Exception: $e');
                     setState(() {
-                      _errorMessage = 'An error occurred during login.';
+                      _errorMessage = e.toString();
                     });
                   }
                 },
@@ -190,18 +195,31 @@ class LoginPageState extends State<LoginPage> {
 
   void _loginWithBiometrics() async {
     try {
-      final token = await AuthApi().login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-      print('Token: $token');
-      _navigateToBiometricPage();
+      final email = await _retrieveEmail();
+      final password = await _secureStorage.read(key: 'password');
+      if (email != null && password != null) {
+        final token = await AuthApi().login(email, password);
+        print('Token: $token');
+        _navigateToBiometricPage();
+      } else {
+        setState(() {
+          _errorMessage = 'Email or password not found.';
+        });
+      }
     } catch (e) {
       print('Exception: $e');
       setState(() {
         _errorMessage = 'An error occurred during login.';
       });
     }
+  }
+
+  Future<void> _storeEmail(String email) async {
+    await _secureStorage.write(key: 'email', value: email);
+  }
+
+  Future<void> _storePassword(String password) async {
+    await _secureStorage.write(key: 'password', value: password);
   }
 
   Future<String?> _retrieveEmail() async {
@@ -216,11 +234,6 @@ class LoginPageState extends State<LoginPage> {
       });
       return;
     }
-  }
-
-  Future<void> _storeEmailAndPassword(String email, String password) async {
-    await _secureStorage.write(key: 'email', value: email);
-    await _secureStorage.write(key: 'password', value: password);
   }
 }
 
@@ -240,7 +253,7 @@ String? passwordValidator(String? value) {
   RegExp passwordRegex = RegExp(r'^(?=.*[A-Z])(?=.*\d).{8,}$');
   if (value == null) return "Password can't be empty";
   if (!passwordRegex.hasMatch(value)) {
-    return 'Password must contain at least one uppercase letter';
+    return 'Password must contain at least one uppercase letter and one digit';
   }
   return null;
 }
