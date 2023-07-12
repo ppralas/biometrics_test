@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
 class BiometricsPage extends StatefulWidget {
-  const BiometricsPage({Key? key});
+  const BiometricsPage({super.key});
 
   @override
   BiometricsPageState createState() => BiometricsPageState();
@@ -20,7 +20,6 @@ class BiometricsPageState extends State<BiometricsPage> {
   @override
   void initState() {
     super.initState();
-    _checkBiometricSupport();
     _loadBiometricsStatus();
     _checkBiometricPermission();
   }
@@ -62,13 +61,13 @@ class BiometricsPageState extends State<BiometricsPage> {
     });
     _saveBiometricsStatus(_biometricsEnabled);
   }
-
-  Future<void> _checkBiometricSupport() async {
-    bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
-    setState(() {
-      _biometricsEnabled = canCheckBiometrics;
-    });
-  }
+//skoro isto ko gore
+  // Future<void> _checkBiometricSupport() async {
+  //   bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
+  //   setState(() {
+  //     _biometricsEnabled = canCheckBiometrics;
+  //   });
+  // }
 
   Future<void> _loadBiometricsStatus() async {
     String? enabled = await _secureStorage.read(key: 'biometricsEnabled');

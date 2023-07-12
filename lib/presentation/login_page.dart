@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:developer';
 
 import 'package:biometric/presentation/enable_biometrics.dart';
@@ -109,15 +111,17 @@ class LoginPageState extends State<LoginPage> {
               const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: () async {
-                  _validateForm();
+                  //_validateForm();
                   try {
                     final token = await AuthApi().login(
                       _emailController.text.trim(),
                       _passwordController.text.trim(),
                     );
                     print('Token: $token');
-                    await _storeEmail(_emailController.text.trim());
-                    await _storePassword(_passwordController.text.trim());
+                    await _storeEmailAndPassword(
+                      _emailController.text.trim(),
+                      _passwordController.text.trim(),
+                    );
                     _navigateToBiometricPage();
                   } catch (e) {
                     print('Exception: $e');
@@ -155,7 +159,7 @@ class LoginPageState extends State<LoginPage> {
   Future<void> _initializeAuthentication() async {
     final canUseBiometrics =
         await _secureStorage.read(key: 'biometricsEnabled');
-    final storedEmail = await _retrieveEmail();
+    final storedEmail = await _getEmailFromSecureStorage();
 
     if (canUseBiometrics == 'true' && storedEmail != null) {
       _emailController.text = storedEmail;
@@ -164,17 +168,17 @@ class LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _authenticateAndNavigate(String email, String password) async {
-    bool authenticated = await _shouldUseLocalAuth();
+    bool successfulAuthentication = await _shouldUseLocalAuth();
 
-    if (authenticated && mounted) {
+    if (successfulAuthentication && mounted) {
       _navigateToBiometricPage();
     }
   }
 
   Future<bool> _shouldUseLocalAuth() async {
     try {
-      final canCheckBiometrics = await _localAuth.canCheckBiometrics;
-      if (!canCheckBiometrics) return false;
+      final supportedBiometrics = await _localAuth.canCheckBiometrics;
+      if (!supportedBiometrics) return false;
 
       final availableBiometrics = await _localAuth.getAvailableBiometrics();
       if (availableBiometrics.isEmpty) return false;
@@ -187,73 +191,73 @@ class LoginPageState extends State<LoginPage> {
         _loginWithBiometrics();
         return authenticated;
       }
-    } catch (e) {
-      log('Authentication error: $e');
+    } catch (error) {
+      log('Authentication error: $error');
     }
     return false;
   }
 
   void _loginWithBiometrics() async {
     try {
-      final email = await _retrieveEmail();
+      final email = await _getEmailFromSecureStorage();
       final password = await _secureStorage.read(key: 'password');
       if (email != null && password != null) {
-        final token = await AuthApi().login(email, password);
-        print('Token: $token');
-        _navigateToBiometricPage();
+        final signInToken = await AuthApi().login(email, password);
+        print('Token: $signInToken');
       } else {
         setState(() {
           _errorMessage = 'Email or password not found.';
         });
       }
-    } catch (e) {
-      print('Exception: $e');
+    } catch (error) {
+      print('Exception: $error');
       setState(() {
         _errorMessage = 'An error occurred during login.';
       });
     }
   }
 
-  Future<void> _storeEmail(String email) async {
+  Future<void> _storeEmailAndPassword(String email, String password) async {
     await _secureStorage.write(key: 'email', value: email);
-  }
-
-  Future<void> _storePassword(String password) async {
     await _secureStorage.write(key: 'password', value: password);
   }
 
-  Future<String?> _retrieveEmail() async {
+  //dodao sam spremanje passworda skupa s emailom, da nemam 2 funkcije neg sam jednu
+
+  Future<String?> _getEmailFromSecureStorage() async {
     return await _secureStorage.read(key: 'email');
   }
 
-  void _validateForm() {
-    _formKey.currentState!.save();
-    if (!_formKey.currentState!.validate()) {
-      setState(() {
-        _errorMessage = 'Wrong credentials. Please try again';
-      });
-      return;
+//visak
+//   void _validateForm() {
+//     _formKey.currentState!.save();
+//     if (!_formKey.currentState!.validate()) {
+//       setState(() {
+//         _errorMessage = 'Wrong credentials. Please try again';
+//       });
+//       return;
+//     }
+//   }
+// }
+
+  String? emailValidator(String? value) {
+    final emailRegex = RegExp(
+      (r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+"),
+    );
+    if (value == null || value.isEmpty) {
+      return 'Email is required';
+    } else if (!emailRegex.hasMatch(value)) {
+      return 'Invalid email';
     }
+    return null;
   }
-}
 
-String? emailValidator(String? value) {
-  final emailRegex = RegExp(
-    (r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+"),
-  );
-  if (value == null || value.isEmpty) {
-    return 'Email is required';
-  } else if (!emailRegex.hasMatch(value)) {
-    return 'Invalid email';
+  String? passwordValidator(String? value) {
+    RegExp passwordRegex = RegExp(r'^(?=.*[A-Z])(?=.*\d).{8,}$');
+    if (value == null) return "Password can't be empty";
+    if (!passwordRegex.hasMatch(value)) {
+      return 'Password must contain at least one uppercase letter and one digit';
+    }
+    return null;
   }
-  return null;
-}
-
-String? passwordValidator(String? value) {
-  RegExp passwordRegex = RegExp(r'^(?=.*[A-Z])(?=.*\d).{8,}$');
-  if (value == null) return "Password can't be empty";
-  if (!passwordRegex.hasMatch(value)) {
-    return 'Password must contain at least one uppercase letter and one digit';
-  }
-  return null;
 }
