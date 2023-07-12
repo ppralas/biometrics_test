@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:biometric/presentation/enable_biometrics.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -79,9 +80,7 @@ class LoginPageState extends State<LoginPage> {
                 decoration: const InputDecoration(
                   labelText: 'Email',
                 ),
-                validator: (value) {
-                  return emailValidator(value);
-                },
+                validator: (value) => emailValidator(value),
               ),
               const SizedBox(height: 16.0),
               TextFormField(
@@ -102,9 +101,7 @@ class LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 obscureText: !_isPasswordVisible,
-                validator: (value) {
-                  return passwordValidator(value);
-                },
+                validator: (value) => passwordValidator(value),
               ),
               const SizedBox(height: 16.0),
               ElevatedButton(
@@ -207,25 +204,9 @@ class LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _storeEmail(String email) async {
-    await _secureStorage.write(key: 'email', value: email);
-  }
-
   Future<String?> _retrieveEmail() async {
     return await _secureStorage.read(key: 'email');
   }
-
-  // void _login(String email, String password) async {
-  //   if (_validCredentials.containsKey(email) &&
-  //       _validCredentials[email] == password) {
-  //     await _storeEmailAndPassword(email, password);
-  //     _navigateToBiometricPage();
-  //   } else {
-  //     setState(() {
-  //       _errorMessage = 'Invalid email or password. Please try again.';
-  //     });
-  //   }
-  // }
 
   void _validateForm() {
     _formKey.currentState!.save();
@@ -241,8 +222,6 @@ class LoginPageState extends State<LoginPage> {
     await _secureStorage.write(key: 'email', value: email);
     await _secureStorage.write(key: 'password', value: password);
   }
-  //napraviti login funkicu koja provjerava da li je email valid, password valid, postoji li user s navedenim emailom
-  // i passwordom, ako je to sve ok spremiti u secure storage email i password
 }
 
 String? emailValidator(String? value) {

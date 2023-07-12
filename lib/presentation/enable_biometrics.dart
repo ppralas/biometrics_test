@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
 class BiometricsPage extends StatefulWidget {
-  const BiometricsPage({super.key});
+  const BiometricsPage({Key? key});
 
   @override
   BiometricsPageState createState() => BiometricsPageState();
@@ -41,18 +41,10 @@ class BiometricsPageState extends State<BiometricsPage> {
               children: [
                 Switch(
                   value: _biometricsEnabled,
-                  onChanged: (value) {
-                    _toggleBiometrics(value);
-                    _saveBiometricsStatus(value);
-                  },
+                  onChanged: (value) => _toggleBiometrics(value),
                 ),
                 ElevatedButton(
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const LoginPage(),
-                    ),
-                  ),
+                  onPressed: () => _logout(),
                   child: const Text('Log out'),
                 )
               ],
@@ -64,39 +56,18 @@ class BiometricsPageState extends State<BiometricsPage> {
   }
 
   Future<void> _toggleBiometrics(bool value) async {
-    if (value) {
-      bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
-      if (canCheckBiometrics) {
-        setState(
-          () {
-            _biometricsEnabled = true;
-          },
-        );
-      } else {
-        setState(
-          () {
-            _biometricsEnabled = false;
-          },
-        );
-      }
-    } else {
-      setState(
-        () {
-          _biometricsEnabled = false;
-        },
-      );
-    }
+    bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
+    setState(() {
+      _biometricsEnabled = value && canCheckBiometrics;
+    });
+    _saveBiometricsStatus(_biometricsEnabled);
   }
 
   Future<void> _checkBiometricSupport() async {
     bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
-    if (!canCheckBiometrics) {
-      setState(
-        () {
-          _biometricsEnabled = false;
-        },
-      );
-    }
+    setState(() {
+      _biometricsEnabled = canCheckBiometrics;
+    });
   }
 
   Future<void> _loadBiometricsStatus() async {
@@ -110,13 +81,11 @@ class BiometricsPageState extends State<BiometricsPage> {
     try {
       bool isBiometricEnabled = await _localAuth.isDeviceSupported();
       if (!isBiometricEnabled) {
-        // Biometrics is not enabled in the system
         setState(() {
           _biometricsEnabled = false;
         });
       }
     } on PlatformException catch (error) {
-      // An error occurred while checking biometric permission
       setState(() {
         _biometricsEnabled = false;
       });
@@ -127,5 +96,14 @@ class BiometricsPageState extends State<BiometricsPage> {
   Future<void> _saveBiometricsStatus(bool value) async {
     await _secureStorage.write(
         key: 'biometricsEnabled', value: value.toString());
+  }
+
+  void _logout() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LoginPage(),
+      ),
+    );
   }
 }
