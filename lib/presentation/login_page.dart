@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'dart:developer';
 
 import 'package:biometric/presentation/enable_biometrics.dart';
@@ -122,7 +120,19 @@ class LoginPageState extends State<LoginPage> {
                       _emailController.text.trim(),
                       _passwordController.text.trim(),
                     );
-                    _navigateToBiometricPage();
+
+                    bool shouldUseLocalAuthentication =
+                        await _shouldUseLocalAuth();
+
+                    if (shouldUseLocalAuthentication) {
+                      bool authenticated = await _localAuth.authenticate(
+                        localizedReason: 'Authenticate to access the app',
+                      );
+
+                      if (authenticated) {
+                        _loginWithBiometrics();
+                      }
+                    }
                   } catch (e) {
                     print('Exception: $e');
                     setState(() {
@@ -163,15 +173,6 @@ class LoginPageState extends State<LoginPage> {
 
     if (canUseBiometrics == 'true' && storedEmail != null) {
       _emailController.text = storedEmail;
-      _authenticateAndNavigate(storedEmail, '');
-    }
-  }
-
-  Future<void> _authenticateAndNavigate(String email, String password) async {
-    bool successfulAuthentication = await _shouldUseLocalAuth();
-
-    if (successfulAuthentication && mounted) {
-      _navigateToBiometricPage();
     }
   }
 
@@ -183,18 +184,11 @@ class LoginPageState extends State<LoginPage> {
       final availableBiometrics = await _localAuth.getAvailableBiometrics();
       if (availableBiometrics.isEmpty) return false;
 
-      bool authenticated = await _localAuth.authenticate(
-        localizedReason: 'Authenticate to access the app',
-      );
-
-      if (authenticated) {
-        _loginWithBiometrics();
-        return authenticated;
-      }
+      return true;
     } catch (error) {
       log('Authentication error: $error');
+      return false;
     }
-    return false;
   }
 
   void _loginWithBiometrics() async {
@@ -222,23 +216,9 @@ class LoginPageState extends State<LoginPage> {
     await _secureStorage.write(key: 'password', value: password);
   }
 
-  //dodao sam spremanje passworda skupa s emailom, da nemam 2 funkcije neg sam jednu
-
   Future<String?> _getEmailFromSecureStorage() async {
     return await _secureStorage.read(key: 'email');
   }
-
-//visak
-//   void _validateForm() {
-//     _formKey.currentState!.save();
-//     if (!_formKey.currentState!.validate()) {
-//       setState(() {
-//         _errorMessage = 'Wrong credentials. Please try again';
-//       });
-//       return;
-//     }
-//   }
-// }
 
   String? emailValidator(String? value) {
     final emailRegex = RegExp(
