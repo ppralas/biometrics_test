@@ -110,34 +110,10 @@ class LoginPageState extends State<LoginPage> {
               const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: () async {
-                  try {
-                    final token = await AuthApi().login(
-                      _emailController.text.trim(),
-                      _passwordController.text.trim(),
-                    );
-                    print('Token: $token');
-                    _navigateToBiometricPage();
-                    await _storeEmailAndPassword(
-                      _emailController.text.trim(),
-                      _passwordController.text.trim(),
-                    );
-                    _navigateToBiometricPage();
-
-                    // if (shouldUseLocalAuthentication) {
-                    //   bool authenticated = await _localAuth.authenticate(
-                    //     localizedReason: 'Authenticate to access the app',
-                    //   );
-
-                    //   if (authenticated) {
-                    //     _loginWithBiometrics();
-                    //   }
-                    // }
-                  } catch (e) {
-                    print('Exception: $e');
-                    setState(() {
-                      _errorMessage = e.toString();
-                    });
-                  }
+                  _login(
+                    _emailController.text.trim(),
+                    _passwordController.text.trim(),
+                  );
                 },
                 child: const Text('Login'),
               ),
@@ -165,6 +141,26 @@ class LoginPageState extends State<LoginPage> {
     );
   }
 
+  void _login(String email, String password) async {
+    try {
+      final token = await AuthApi().login(
+        email,
+        password,
+      );
+      print('Token: $token');
+      await _storeEmailAndPassword(
+        email,
+        password,
+      );
+      _navigateToBiometricPage();
+    } catch (e) {
+      print('Exception: $e');
+      setState(() {
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
   Future<void> _storeEmailAndPassword(String email, String password) async {
     await _secureStorage.write(key: 'email', value: email);
     await _secureStorage.write(key: 'password', value: password);
@@ -177,10 +173,8 @@ class LoginPageState extends State<LoginPage> {
   Future<void> _initializeAuthentication() async {
     final canUseBiometrics =
         await _secureStorage.read(key: 'biometricsEnabled');
-    final storedEmail = await _getEmailFromSecureStorage();
 
-    if (canUseBiometrics == 'true' && storedEmail != null) {
-      _emailController.text = storedEmail;
+    if (canUseBiometrics == 'true') {
       _loginWithBiometrics();
     }
   }
@@ -204,9 +198,10 @@ class LoginPageState extends State<LoginPage> {
     try {
       final email = await _getEmailFromSecureStorage();
       final password = await _secureStorage.read(key: 'password');
-      if (email != null && password != null) {
-        final signInToken = await AuthApi().login(email, password);
-        print('Token: $signInToken');
+      final bool biometricResoult =
+          await _localAuth.authenticate(localizedReason: 'kurac');
+      if (email != null && password != null && biometricResoult == true) {
+        _login(email, password);
       } else {
         setState(() {
           _errorMessage = 'Email or password not found.';
