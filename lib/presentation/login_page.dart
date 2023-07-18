@@ -57,6 +57,8 @@ class LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    _loginWithBiometrics();
+    _shouldUseLocalAuth();
     _initializeAuthentication();
   }
 
@@ -109,30 +111,28 @@ class LoginPageState extends State<LoginPage> {
               const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: () async {
-                  //_validateForm();
                   try {
                     final token = await AuthApi().login(
                       _emailController.text.trim(),
                       _passwordController.text.trim(),
                     );
                     print('Token: $token');
+                    _navigateToBiometricPage();
                     await _storeEmailAndPassword(
                       _emailController.text.trim(),
                       _passwordController.text.trim(),
                     );
+                    _navigateToBiometricPage();
 
-                    bool shouldUseLocalAuthentication =
-                        await _shouldUseLocalAuth();
+                    // if (shouldUseLocalAuthentication) {
+                    //   bool authenticated = await _localAuth.authenticate(
+                    //     localizedReason: 'Authenticate to access the app',
+                    //   );
 
-                    if (shouldUseLocalAuthentication) {
-                      bool authenticated = await _localAuth.authenticate(
-                        localizedReason: 'Authenticate to access the app',
-                      );
-
-                      if (authenticated) {
-                        _loginWithBiometrics();
-                      }
-                    }
+                    //   if (authenticated) {
+                    //     _loginWithBiometrics();
+                    //   }
+                    // }
                   } catch (e) {
                     print('Exception: $e');
                     setState(() {
@@ -164,6 +164,15 @@ class LoginPageState extends State<LoginPage> {
         builder: (context) => const BiometricsPage(),
       ),
     );
+  }
+
+  Future<void> _storeEmailAndPassword(String email, String password) async {
+    await _secureStorage.write(key: 'email', value: email);
+    await _secureStorage.write(key: 'password', value: password);
+  }
+
+  Future<String?> _getEmailFromSecureStorage() async {
+    return await _secureStorage.read(key: 'email');
   }
 
   Future<void> _initializeAuthentication() async {
@@ -209,15 +218,6 @@ class LoginPageState extends State<LoginPage> {
         _errorMessage = 'An error occurred during login.';
       });
     }
-  }
-
-  Future<void> _storeEmailAndPassword(String email, String password) async {
-    await _secureStorage.write(key: 'email', value: email);
-    await _secureStorage.write(key: 'password', value: password);
-  }
-
-  Future<String?> _getEmailFromSecureStorage() async {
-    return await _secureStorage.read(key: 'email');
   }
 
   String? emailValidator(String? value) {
