@@ -57,7 +57,6 @@ class LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _loginWithBiometrics();
     _shouldUseLocalAuth();
     _initializeAuthentication();
   }
@@ -182,6 +181,7 @@ class LoginPageState extends State<LoginPage> {
 
     if (canUseBiometrics == 'true' && storedEmail != null) {
       _emailController.text = storedEmail;
+      _loginWithBiometrics();
     }
   }
 
