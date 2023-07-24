@@ -1,9 +1,6 @@
-import 'dart:developer';
-
+import 'package:biometric/domain/login_state.dart';
 import 'package:biometric/presentation/enable_biometrics.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:local_auth/local_auth.dart';
 
 class AuthApi {
   static const Map<String, String> _validCredentials = {
@@ -47,8 +44,7 @@ class LoginPage extends StatefulWidget {
 class LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  final LocalAuthentication _localAuth = LocalAuthentication();
+
   bool _isPasswordVisible = false;
 
   final _formKey = GlobalKey<FormState>();
@@ -57,12 +53,12 @@ class LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _shouldUseLocalAuth();
-    _initializeAuthentication();
   }
 
   @override
   Widget build(BuildContext context) {
+    final loginNotifier = (loginProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Login Screen'),
@@ -110,9 +106,17 @@ class LoginPageState extends State<LoginPage> {
               const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: () async {
-                  _login(
+                  await loginNotifier.login(
                     _emailController.text.trim(),
                     _passwordController.text.trim(),
+                    () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const BiometricsPage(),
+                        ),
+                      );
+                    },
                   );
                 },
                 child: const Text('Login'),
@@ -130,89 +134,6 @@ class LoginPageState extends State<LoginPage> {
         ),
       ),
     );
-  }
-
-  void _navigateToBiometricPage() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const BiometricsPage(),
-      ),
-    );
-  }
-
-  void _login(String email, String password) async {
-    try {
-      final token = await AuthApi().login(
-        email,
-        password,
-      );
-      print('Token: $token');
-      await _storeEmailAndPassword(
-        email,
-        password,
-      );
-      _navigateToBiometricPage();
-    } catch (e) {
-      print('Exception: $e');
-      setState(() {
-        _errorMessage = e.toString();
-      });
-    }
-  }
-
-  Future<void> _storeEmailAndPassword(String email, String password) async {
-    await _secureStorage.write(key: 'email', value: email);
-    await _secureStorage.write(key: 'password', value: password);
-  }
-
-  Future<String?> _getEmailFromSecureStorage() async {
-    return await _secureStorage.read(key: 'email');
-  }
-
-  Future<void> _initializeAuthentication() async {
-    final canUseBiometrics =
-        await _secureStorage.read(key: 'biometricsEnabled');
-
-    if (canUseBiometrics == 'true') {
-      _loginWithBiometrics();
-    }
-  }
-
-  Future<bool> _shouldUseLocalAuth() async {
-    try {
-      final supportedBiometrics = await _localAuth.canCheckBiometrics;
-      if (!supportedBiometrics) return false;
-
-      final availableBiometrics = await _localAuth.getAvailableBiometrics();
-      if (availableBiometrics.isEmpty) return false;
-
-      return true;
-    } catch (error) {
-      log('Authentication error: $error');
-      return false;
-    }
-  }
-
-  void _loginWithBiometrics() async {
-    try {
-      final email = await _getEmailFromSecureStorage();
-      final password = await _secureStorage.read(key: 'password');
-      final bool biometricResoult =
-          await _localAuth.authenticate(localizedReason: 'kurac');
-      if (email != null && password != null && biometricResoult == true) {
-        _login(email, password);
-      } else {
-        setState(() {
-          _errorMessage = 'Email or password not found.';
-        });
-      }
-    } catch (error) {
-      print('Exception: $error');
-      setState(() {
-        _errorMessage = 'An error occurred during login.';
-      });
-    }
   }
 
   String? emailValidator(String? value) {
