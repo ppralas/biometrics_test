@@ -1,6 +1,7 @@
 import 'package:biometric/domain/login_state.dart';
 import 'package:biometric/presentation/enable_biometrics.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AuthApi {
   static const Map<String, String> _validCredentials = {
@@ -34,14 +35,14 @@ class BiometricsApp extends StatelessWidget {
   }
 }
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
 
   @override
-  LoginPageState createState() => LoginPageState();
+  ConsumerState<ConsumerStatefulWidget> createState() => LoginPageState();
 }
 
-class LoginPageState extends State<LoginPage> {
+class LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -57,7 +58,7 @@ class LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final loginNotifier = (loginProvider);
+    final loginNotifier = ref.watch(loginProvider);
 
     return Scaffold(
       appBar: AppBar(
