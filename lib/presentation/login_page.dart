@@ -1,5 +1,4 @@
 import 'package:biometric/domain/login_state.dart';
-import 'package:biometric/presentation/enable_biometrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -49,7 +48,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
   bool _isPasswordVisible = false;
 
   final _formKey = GlobalKey<FormState>();
-  String _errorMessage = '';
+  final String _errorMessage = '';
 
   @override
   void initState() {
@@ -110,14 +109,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
                   await loginNotifier.login(
                     _emailController.text.trim(),
                     _passwordController.text.trim(),
-                    () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const BiometricsPage(),
-                        ),
-                      );
-                    },
+                    context,
                   );
                 },
                 child: const Text('Login'),

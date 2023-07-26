@@ -61,13 +61,6 @@ class BiometricsPageState extends State<BiometricsPage> {
     });
     _saveBiometricsStatus(_biometricsEnabled);
   }
-//skoro isto ko gore
-  // Future<void> _checkBiometricSupport() async {
-  //   bool canCheckBiometrics = await _localAuth.canCheckBiometrics;
-  //   setState(() {
-  //     _biometricsEnabled = canCheckBiometrics;
-  //   });
-  // }
 
   Future<void> _loadBiometricsStatus() async {
     String? enabled = await _secureStorage.read(key: 'biometricsEnabled');

@@ -1,7 +1,9 @@
 import 'dart:developer';
 
+import 'package:biometric/presentation/enable_biometrics.dart';
 import 'package:biometric/presentation/login_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:riverpod/riverpod.dart';
@@ -20,16 +22,21 @@ class LoginNotifier extends StateNotifier<LoginState> {
   LoginNotifier(
     this._secureStorage,
     this._localAuth,
-  ) : super(LoginState());
+  ) : super(
+          LoginState(),
+        );
 
   Future<void> login(
-      String email, String password, VoidCallback onSuccess) async {
+    String email,
+    String password,
+    BuildContext context,
+  ) async {
     try {
       final token = await AuthApi().login(email, password);
       print('Token: $token');
       await storeEmailAndPassword(email, password);
-      state
-          .onSuccess(); // Call the onLoginSuccess callback function for successful login
+      state.onSuccess();
+      _navigateToBiometricsPage(context);
     } catch (e) {
       print('Exception: $e');
       setErrorMessage(e.toString());
@@ -45,12 +52,15 @@ class LoginNotifier extends StateNotifier<LoginState> {
     return await _secureStorage.read(key: 'email');
   }
 
-  Future<void> initializeAuthentication() async {
+  Future<bool> canUseBiometrics() async {
     final canUseBiometrics =
         await _secureStorage.read(key: 'biometricsEnabled');
+    return canUseBiometrics == 'true';
+  }
 
-    if (canUseBiometrics == 'true') {
-      loginWithBiometrics();
+  Future<void> initializeAuthentication(BuildContext context) async {
+    if (await canUseBiometrics()) {
+      loginWithBiometrics(context);
     }
   }
 
@@ -69,14 +79,14 @@ class LoginNotifier extends StateNotifier<LoginState> {
     }
   }
 
-  void loginWithBiometrics() async {
+  void loginWithBiometrics(BuildContext context) async {
     try {
       final email = await getEmailFromSecureStorage();
       final password = await _secureStorage.read(key: 'password');
       final bool biometricResult =
-          await _localAuth.authenticate(localizedReason: 'kurac');
+          await _localAuth.authenticate(localizedReason: 'something');
       if (email != null && password != null && biometricResult == true) {
-        login(email, password, () {});
+        await login(email, password, context);
       } else {
         setErrorMessage('Email or password not found.');
       }
@@ -88,6 +98,16 @@ class LoginNotifier extends StateNotifier<LoginState> {
 
   void setErrorMessage(String message) {
     state = state.copyWith(errorMessage: message);
+  }
+
+  void _navigateToBiometricsPage(BuildContext context) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            const BiometricsPage(), // Replace 'BiometricsPage' with the actual name of your biometrics page class.
+      ),
+    );
   }
 }
 
