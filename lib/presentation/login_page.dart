@@ -57,7 +57,13 @@ class LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final loginNotifier = ref.watch(loginProvider);
+    final loginNotifier = ref.listen(loginProvider, (_, next) {
+      next.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        context,
+      );
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -106,11 +112,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
               const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: () async {
-                  await loginNotifier.login(
-                    _emailController.text.trim(),
-                    _passwordController.text.trim(),
-                    context,
-                  );
+                  loginNotifier;
                 },
                 child: const Text('Login'),
               ),
