@@ -1,4 +1,5 @@
-import 'package:biometric/domain/login_state.dart';
+import 'package:biometric/domain/login_state_notifier.dart';
+import 'package:biometric/presentation/enable_biometrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +11,7 @@ class AuthApi {
   };
 
   Future<String> login(String email, String password) async {
+    await Future.delayed(const Duration(seconds: 3));
     if (_validCredentials.containsKey(email) &&
         _validCredentials[email] == password) {
       return 'testToken';
@@ -48,23 +50,23 @@ class LoginPageState extends ConsumerState<LoginPage> {
   bool _isPasswordVisible = false;
 
   final _formKey = GlobalKey<FormState>();
-  final String _errorMessage = '';
 
-  @override
-  void initState() {
-    super.initState();
+  void _navigateToBiometricsPage() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BiometricsPage(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final loginNotifier = ref.listen(loginProvider, (_, next) {
-      next.login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-        context,
-      );
+    ref.listen<LoginState>(loginNotifierProvider, (_, next) {
+      if (next.loggedIn) {
+        _navigateToBiometricsPage();
+      }
     });
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Login Screen'),
@@ -112,18 +114,32 @@ class LoginPageState extends ConsumerState<LoginPage> {
               const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: () async {
-                  loginNotifier;
+                  if (!ref.read(loginNotifierProvider).isLoading) {
+                    if (_formKey.currentState!.validate()) {
+                      ref.read(loginNotifierProvider.notifier).login(
+                            _emailController.text,
+                            _passwordController.text,
+                          );
+                    }
+                  }
                 },
-                child: const Text('Login'),
+                child: ref.watch(loginNotifierProvider).isLoading
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Login'),
               ),
               const SizedBox(height: 16.0),
-              if (_errorMessage.isNotEmpty)
-                Text(
-                  _errorMessage,
-                  style: const TextStyle(
-                    color: Colors.red,
-                  ),
+              Text(
+                ref.watch(loginNotifierProvider).errorMessage,
+                style: const TextStyle(
+                  color: Colors.red,
                 ),
+              ),
             ],
           ),
         ),
