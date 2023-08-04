@@ -1,6 +1,5 @@
 import 'dart:developer';
 
-import 'package:biometric/presentation/enable_biometrics.dart';
 import 'package:biometric/presentation/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,12 +7,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:riverpod/riverpod.dart';
 
-final loginProvider = Provider<LoginNotifier>((ref) {
-  return LoginNotifier(
+final loginNotifierProvider = StateNotifierProvider<LoginNotifier, LoginState>(
+  (ref) => LoginNotifier(
     const FlutterSecureStorage(),
     LocalAuthentication(),
-  );
-});
+  ),
+);
 
 class LoginNotifier extends StateNotifier<LoginState> {
   final FlutterSecureStorage _secureStorage;
@@ -26,20 +25,28 @@ class LoginNotifier extends StateNotifier<LoginState> {
           LoginState(),
         );
 
-  Future<void> login(
+  void login(
+    //updateat state
     String email,
     String password,
-    BuildContext context,
   ) async {
+    state = state.copyWith(isLoading: true);
     try {
       final token = await AuthApi().login(email, password);
+
       print('Token: $token');
       await storeEmailAndPassword(email, password);
-      state.onSuccess();
-      _navigateToBiometricsPage(context);
+      state = state.copyWith(
+        errorMessage: '',
+        loggedIn: true,
+        isLoading: false,
+      );
     } catch (e) {
       print('Exception: $e');
-      setErrorMessage(e.toString());
+      state = state.copyWith(
+        errorMessage: e.toString(),
+        isLoading: false,
+      );
     }
   }
 
@@ -86,7 +93,10 @@ class LoginNotifier extends StateNotifier<LoginState> {
       final bool biometricResult =
           await _localAuth.authenticate(localizedReason: 'something');
       if (email != null && password != null && biometricResult == true) {
-        await login(email, password, context);
+        login(
+          email,
+          password,
+        );
       } else {
         setErrorMessage('Email or password not found.');
       }
@@ -100,13 +110,12 @@ class LoginNotifier extends StateNotifier<LoginState> {
     state = state.copyWith(errorMessage: message);
   }
 
-  void _navigateToBiometricsPage(BuildContext context) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            const BiometricsPage(), // Replace 'BiometricsPage' with the actual name of your biometrics page class.
-      ),
+  Future<void> logOut() async {
+    state = state.copyWith(isLoading: true);
+    await _secureStorage.deleteAll();
+    state = state.copyWith(
+      loggedIn: false,
+      isLoading: false,
     );
   }
 }
@@ -114,26 +123,27 @@ class LoginNotifier extends StateNotifier<LoginState> {
 class LoginState {
   final String errorMessage;
   bool loggedIn;
+  bool isLoading;
+  bool isBiometricsEnabled;
 
   LoginState({
     this.errorMessage = '',
     this.loggedIn = false,
-    bool? isBiometricsEnabled,
+    this.isBiometricsEnabled = false,
+    this.isLoading = false,
   });
 
   LoginState copyWith({
     String? errorMessage,
     bool? loggedIn,
+    bool? isBiometricsEnabled,
+    bool? isLoading,
   }) {
     return LoginState(
       errorMessage: errorMessage ?? this.errorMessage,
       loggedIn: loggedIn ?? this.loggedIn,
+      isBiometricsEnabled: isBiometricsEnabled ?? this.isBiometricsEnabled,
+      isLoading: isLoading ?? this.isLoading,
     );
-  }
-
-  void onSuccess() {
-    if (loggedIn) {
-      loggedIn = true;
-    }
   }
 }

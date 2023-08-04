@@ -1,17 +1,19 @@
+import 'package:biometric/domain/login_state_notifier.dart';
 import 'package:biometric/presentation/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
-class BiometricsPage extends StatefulWidget {
+class BiometricsPage extends ConsumerStatefulWidget {
   const BiometricsPage({super.key});
 
   @override
   BiometricsPageState createState() => BiometricsPageState();
 }
 
-class BiometricsPageState extends State<BiometricsPage> {
+class BiometricsPageState extends ConsumerState<BiometricsPage> {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
 
@@ -43,7 +45,10 @@ class BiometricsPageState extends State<BiometricsPage> {
                   onChanged: (value) => _toggleBiometrics(value),
                 ),
                 ElevatedButton(
-                  onPressed: () => _logout(),
+                  onPressed: () {
+                    ref.read(loginNotifierProvider.notifier).logOut();
+                    _logout();
+                  },
                   child: const Text('Log out'),
                 )
               ],
