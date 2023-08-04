@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:biometric/domain/login_state.dart';
 import 'package:biometric/presentation/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -116,34 +117,6 @@ class LoginNotifier extends StateNotifier<LoginState> {
     state = state.copyWith(
       loggedIn: false,
       isLoading: false,
-    );
-  }
-}
-
-class LoginState {
-  final String errorMessage;
-  bool loggedIn;
-  bool isLoading;
-  bool isBiometricsEnabled;
-
-  LoginState({
-    this.errorMessage = '',
-    this.loggedIn = false,
-    this.isBiometricsEnabled = false,
-    this.isLoading = false,
-  });
-
-  LoginState copyWith({
-    String? errorMessage,
-    bool? loggedIn,
-    bool? isBiometricsEnabled,
-    bool? isLoading,
-  }) {
-    return LoginState(
-      errorMessage: errorMessage ?? this.errorMessage,
-      loggedIn: loggedIn ?? this.loggedIn,
-      isBiometricsEnabled: isBiometricsEnabled ?? this.isBiometricsEnabled,
-      isLoading: isLoading ?? this.isLoading,
     );
   }
 }

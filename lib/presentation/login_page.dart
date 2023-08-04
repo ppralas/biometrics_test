@@ -1,3 +1,4 @@
+import 'package:biometric/domain/login_state.dart';
 import 'package:biometric/domain/login_state_notifier.dart';
 import 'package:biometric/presentation/enable_biometrics.dart';
 import 'package:flutter/material.dart';
